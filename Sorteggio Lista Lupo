@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lupo Nero — Tentativo</title>
+<style>
+:root{color-scheme:light dark;--bg:light-dark(#f7f7f5,#090a09);--surface:light-dark(#fff,#121512);--surface2:light-dark(#f0f1ed,#1b1e1b);--text:light-dark(#151715,#f4f5f1);--muted:light-dark(#646b64,#a7afa7);--border:light-dark(#dfe2dc,#2b302b);--accent:light-dark(#171a17,#d9ded8)}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--text)}
+#app{min-height:100vh;background:var(--bg);display:grid;place-items:center;padding:28px 18px}
+.card{width:min(520px,100%);background:var(--surface);border:1px solid var(--border);border-radius:28px;padding:34px 28px;box-shadow:0 20px 60px rgba(0,0,0,.12);text-align:center}
+.mark{font-size:52px;line-height:1;margin-bottom:12px}
+.eyebrow{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:800}
+.title{font-size:clamp(32px,8vw,54px);letter-spacing:-.05em;margin:8px 0}
+.sub{color:var(--muted);line-height:1.5;margin:0 auto 26px;max-width:390px}
+.box{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:18px;margin:18px 0}
+.chance{font-size:14px;color:var(--muted)}
+.timer{font-variant-numeric:tabular-nums;font-size:38px;font-weight:800;letter-spacing:.02em;margin:4px 0}
+.status{font-size:14px;color:var(--muted)}
+button{width:100%;border:0;border-radius:16px;padding:17px 20px;background:var(--accent);color:light-dark(#fff,#101210);font-size:16px;font-weight:800;cursor:pointer;transition:.15s transform,.15s opacity}
+button:hover:not(:disabled){transform:translateY(-1px)}
+button:disabled{opacity:.42;cursor:not-allowed}
+.result{min-height:26px;margin-top:18px;font-weight:800}
+.win{font-size:24px}
+.note{font-size:12px;line-height:1.45;color:var(--muted);margin-top:24px}
+.reset{margin-top:16px;background:transparent;color:var(--muted);border:1px solid var(--border);font-size:12px;padding:10px}
+</style>
+</head>
+
+<body>
+<main id="app">
+<section class="card">
+
+<div class="mark">🐺</div>
+<div class="eyebrow">Lista Lupo Nero</div>
+
+<h1 class="title">Tenta la sorte.</h1>
+
+<p class="sub">
+Ogni 8 ore puoi tentare il sorteggio per vincere un gadget della Lista Lupo Nero.
+</p>
+
+<div class="box">
+<div class="chance">Prossimo tentativo</div>
+<div class="timer" id="timer">00:00:00</div>
+<div class="status" id="status">Puoi tentare adesso.</div>
+</div>
+
+<button id="tryBtn">🎲 TENTA LA SORTE</button>
+
+<div class="result" id="result" aria-live="polite"></div>
+
+<p class="note">
+Il timer viene salvato in questo browser. Questa demo non usa un server: cancellare i dati del browser o cambiare dispositivo può azzerare il blocco.
+</p>
+
+<button class="reset" id="resetBtn">Azzera timer (demo)</button>
+
+</section>
+</main>
+
+<script>
+const KEY='lupo-nero-last-attempt-v1';
+const COOLDOWN=8*60*60*1000;
+
+const LOSING_PHRASES=[
+'Il branco ha ululato… ma non oggi. 🐺',
+'La sorte ti ha visto e ha pensato: “anche no”.',
+'Questa volta il lupo passa oltre. Tu invece puoi riprovare tra 8 ore.',
+'Non era il tuo momento. Ma almeno ci hai provato, genio. 😏',
+'Quasi… ma il destino ha detto no. Con una certa soddisfazione.',
+'Il dado è caduto. Tu un po’ meno.',
+'Niente gadget stavolta. La fortuna oggi aveva di meglio da fare.',
+'Hai sfidato la sorte. La sorte ha riso.',
+'Il lupo non molla. Tu però smettila di cliccare come un disperato. 🐺',
+'Hai ululato alla fortuna. Lei ha messo il telefono in silenzioso.',
+'Il gadget era lì. Poi ha visto te e si è nascosto.',
+'La fortuna ti sta evitando con una precisione inquietante.',
+'Niente ciccia, lupetto. Torna tra 8 ore.',
+'Oggi il branco ti guarda. E nessuno sa cosa dirti.',
+'Hai perso. Ma con stile. Forse.',
+'La luna non era dalla tua parte. Nemmeno il resto dell’universo, a quanto pare.',
+'Riprova più tardi. Magari nel frattempo la fortuna si distrae.',
+'Il destino ha pescato il tuo nome. Poi l’ha rimesso dentro.',
+'Nope. La zampa della fortuna oggi era occupata.'
+];
+
+const timer=document.querySelector('#timer');
+const status=document.querySelector('#status');
+const btn=document.querySelector('#tryBtn');
+const result=document.querySelector('#result');
+const reset=document.querySelector('#resetBtn');
+
+function last(){
+const n=Number(localStorage.getItem(KEY));
+return Number.isFinite(n)&&n>0?n:0
+}
+
+function fmt(ms){
+let s=Math.max(0,Math.ceil(ms/1000));
+const h=Math.floor(s/3600);
+s%=3600;
+const m=Math.floor(s/60);
+s%=60;
+return [h,m,s].map(x=>String(x).padStart(2,'0')).join(':')
+}
+
+function render(){
+const l=last();
+const remaining=l?COOLDOWN-(Date.now()-l):0;
+
+if(remaining>0){
+timer.textContent=fmt(remaining);
+status.textContent='Prossimo tentativo disponibile tra:';
+btn.disabled=true;
+}else{
+timer.textContent='00:00:00';
+status.textContent='Puoi tentare adesso.';
+btn.disabled=false;
+}
+}
+
+btn.addEventListener('click',()=>{
+if(btn.disabled)return;
+
+localStorage.setItem(KEY,String(Date.now()));
+
+const won=Math.floor(Math.random()*1000)===0;
+
+if(won){
+result.innerHTML='<span class="win">🐺 HAI VINTO!</span>';
+}else{
+result.textContent=
+LOSING_PHRASES[Math.floor(Math.random()*LOSING_PHRASES.length)]
++' Riprova tra 8 ore.';
+}
+
+render();
+});
+
+reset.addEventListener('click',()=>{
+localStorage.removeItem(KEY);
+result.textContent='';
+render();
+});
+
+render();
+setInterval(render,250);
+</script>
+
+</body>
+</html>
